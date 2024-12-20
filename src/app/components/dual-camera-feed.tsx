@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { API_CONFIG } from '@/config/api'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import Image from 'next/image'
 
 export default function DualCameraFeed() {
-  const [isStreaming, setIsStreaming] = useState(false)
   const [rtspUrl, setRtspUrl] = useState("rtsp://admin:IRMAXS@192.168.31.131:554/ch1/main")
   const [imageUrl, setImageUrl] = useState("")
   const [activeStreams, setActiveStreams] = useState<string[]>([])
@@ -38,8 +38,7 @@ export default function DualCameraFeed() {
       if (response.ok) {
         const streamUrl = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.STREAM}?rtsp_url=${encodeURIComponent(rtspUrl)}`
         setImageUrl(streamUrl)
-        setIsStreaming(true)
-        fetchActiveStreams() // Refresh the list immediately
+        fetchActiveStreams()
       }
     } catch (error) {
       console.error("Error starting stream:", error)
@@ -55,9 +54,8 @@ export default function DualCameraFeed() {
       if (response.ok) {
         if (streamUrl === rtspUrl) {
           setImageUrl("")
-          setIsStreaming(false)
         }
-        fetchActiveStreams() // Refresh the list immediately
+        fetchActiveStreams()
       }
     } catch (error) {
       console.error("Error stopping stream:", error)
@@ -115,10 +113,13 @@ export default function DualCameraFeed() {
 
           <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden">
             {imageUrl ? (
-              <img
+              <Image
                 src={imageUrl}
                 alt="RTSP Stream"
                 className="w-full h-full object-cover"
+                width={1280}
+                height={720}
+                unoptimized
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-500">
