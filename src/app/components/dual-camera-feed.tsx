@@ -14,7 +14,7 @@ export default function DualCameraFeed() {
 
   const fetchActiveStreams = async () => {
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/active-streams`)
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api${API_CONFIG.ENDPOINTS.ACTIVE_STREAMS}`)
       if (response.ok) {
         const data = await response.json()
         setActiveStreams(data.streams)
@@ -33,10 +33,10 @@ export default function DualCameraFeed() {
   const startStream = async () => {
     try {
       const response = await fetch(
-        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.STREAM}?rtsp_url=${encodeURIComponent(rtspUrl)}`
+        `${API_CONFIG.BASE_URL}/api${API_CONFIG.ENDPOINTS.STREAM}?rtsp_url=${encodeURIComponent(rtspUrl)}`
       )
       if (response.ok) {
-        const streamUrl = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.STREAM}?rtsp_url=${encodeURIComponent(rtspUrl)}`
+        const streamUrl = `${API_CONFIG.BASE_URL}/api${API_CONFIG.ENDPOINTS.STREAM}?rtsp_url=${encodeURIComponent(rtspUrl)}`
         setImageUrl(streamUrl)
         fetchActiveStreams()
       }
