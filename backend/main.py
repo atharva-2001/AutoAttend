@@ -99,8 +99,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include router with prefix
-API_PREFIX = "/api"
-app.include_router(router, prefix=API_PREFIX)
+# Include router without prefix
+app.include_router(router)
 
         

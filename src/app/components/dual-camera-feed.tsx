@@ -48,7 +48,7 @@ export default function DualCameraFeed() {
   const stopStream = async (streamUrl: string) => {
     try {
       const response = await fetch(
-        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.STOP_STREAM}?rtsp_url=${encodeURIComponent(streamUrl)}`,
+        `${API_CONFIG.BASE_URL}/api${API_CONFIG.ENDPOINTS.STOP_STREAM}?rtsp_url=${encodeURIComponent(streamUrl)}`,
         { method: 'POST' }
       )
       if (response.ok) {
