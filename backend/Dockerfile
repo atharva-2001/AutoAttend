@@ -7,6 +7,8 @@ WORKDIR /app
 # Copy requirements first for better caching
 COPY requirements.txt .
 
+RUN apt-get update && apt-get install ffmpeg libsm6 libxext6 -y
+
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
