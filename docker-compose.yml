@@ -21,6 +21,19 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    privileged: true
+    sysctls:
+      - net.ipv4.ip_unprivileged_port_start=0
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 65535
+        hard: 65535
 
   nginx:
     image: nginx:latest
