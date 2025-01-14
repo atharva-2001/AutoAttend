@@ -17,13 +17,12 @@ stream_manager = StreamManager()
 async def stream_video(rtsp_url: str):
     print(f"Received stream request for URL: {rtsp_url}")
     stream_id = rtsp_url
-    cap = cv2.VideoCapture(rtsp_url)
-    if not cap.isOpened():
-        print(f"Failed to open stream: {rtsp_url}")
-        raise HTTPException(status_code=400, detail="Could not open RTSP stream")
+    
+    if not stream_manager.start_stream(stream_id, rtsp_url):
+        raise HTTPException(status_code=400, detail="Stream already exists")
 
     return StreamingResponse(
-        stream_manager.generate_frames(stream_id, cap),
+        stream_manager.get_frame(stream_id),
         media_type="multipart/x-mixed-replace;boundary=frame"
     )
 
@@ -36,11 +35,7 @@ async def stop_stream(rtsp_url: str):
 
 @router.get("/active-streams")
 async def get_active_streams():
-    active_streams = [
-        stream_id 
-        for stream_id, is_active in stream_manager.active_streams.items() 
-        if is_active
-    ]
-    return {"streams": active_streams}
+    active_streams = stream_manager.redis_client.hkeys("active_streams")
+    return {"streams": [s.decode() for s in active_streams]}
 
 app.include_router(router)
