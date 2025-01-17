@@ -25,7 +25,6 @@ export default function DualCameraFeed() {
   }
 
   useEffect(() => {
-    // Fetch active streams every 5 seconds
     const interval = setInterval(fetchActiveStreams, 5000)
     return () => clearInterval(interval)
   }, [])
@@ -33,10 +32,16 @@ export default function DualCameraFeed() {
   const startStream = async () => {
     try {
       const response = await fetch(
-        `${API_CONFIG.BASE_URL}/api${API_CONFIG.ENDPOINTS.STREAM}?rtsp_url=${encodeURIComponent(rtspUrl)}`
+        `${API_CONFIG.BASE_URL}/api${API_CONFIG.ENDPOINTS.STREAM}/start`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rtsp_url: rtspUrl })
+        }
       )
       if (response.ok) {
-        const streamUrl = `${API_CONFIG.BASE_URL}/api${API_CONFIG.ENDPOINTS.STREAM}?rtsp_url=${encodeURIComponent(rtspUrl)}`
+        const data = await response.json()
+        const streamUrl = `${API_CONFIG.BASE_URL}/api${API_CONFIG.ENDPOINTS.STREAM}/${data.task_id}`
         setImageUrl(streamUrl)
         fetchActiveStreams()
       }
@@ -45,16 +50,14 @@ export default function DualCameraFeed() {
     }
   }
 
-  const stopStream = async (streamUrl: string) => {
+  const stopStream = async (taskId: string) => {
     try {
       const response = await fetch(
-        `${API_CONFIG.BASE_URL}/api${API_CONFIG.ENDPOINTS.STOP_STREAM}?rtsp_url=${encodeURIComponent(streamUrl)}`,
+        `${API_CONFIG.BASE_URL}/api${API_CONFIG.ENDPOINTS.STOP_STREAM}/${taskId}`,
         { method: 'POST' }
       )
       if (response.ok) {
-        if (streamUrl === rtspUrl) {
-          setImageUrl("")
-        }
+        setImageUrl("")
         fetchActiveStreams()
       }
     } catch (error) {
@@ -88,17 +91,17 @@ export default function DualCameraFeed() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Stream URL</TableHead>
+                  <TableHead>Task ID</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {activeStreams.map((stream) => (
-                  <TableRow key={stream}>
-                    <TableCell className="font-mono text-sm">{stream}</TableCell>
+                {activeStreams.map((taskId) => (
+                  <TableRow key={taskId}>
+                    <TableCell className="font-mono text-sm">{taskId}</TableCell>
                     <TableCell>
                       <Button
-                        onClick={() => stopStream(stream)}
+                        onClick={() => stopStream(taskId)}
                         variant="destructive"
                         size="sm"
                       >

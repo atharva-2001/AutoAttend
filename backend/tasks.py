@@ -1,31 +1,38 @@
-import cv2
 from celery import Celery
-from celery.utils.log import get_task_logger
+import redis
 from config import Config
+from ultralytics import YOLO
+import cv2
 
-logger = get_task_logger(__name__)
-app = Celery('tasks', broker=Config.CELERY_BROKER_URL)
+app = Celery('tasks')
+app.config_from_object(Config)
 
-@app.task(name='tasks.get_frame')
-def get_frame(rtsp_url):
-    # Set OpenCV capture properties for better RTSP handling
-    cap = cv2.VideoCapture(rtsp_url)
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Minimize buffer size
-    
-    # Set timeouts
-    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M','J','P','G'))
-    cap.set(cv2.CAP_PROP_FPS, 30)
+redis_client = redis.from_url(Config.CELERY_RESULT_BACKEND)
+
+# Load YOLO model once when module loads
+model = YOLO("yolo11n.pt")
+
+@app.task(name='tasks.process_stream', bind=True)
+def process_stream(self, rtsp_url):
+    """Process RTSP stream with YOLO and save frames to Redis"""
+    task_id = self.request.id
+    redis_client.hset("active_streams", task_id, "1")
     
     try:
-        success, frame = cap.read()
-        if not success:
-            return None
+        # Run inference on the source directly using YOLO
+        results = model(rtsp_url, stream=True)  # generator of Results objects
+        
+        for result in results:
+            # Plot the result and convert to bytes
+            frame = result.plot()
+            _, frame_bytes = cv2.imencode('.jpg', frame)
             
-        # Encode frame to bytes before returning
-        _, buffer = cv2.imencode('.jpg', frame)
-        return buffer.tobytes()
-    except Exception as e:
-        logger.error(f"Error capturing frame: {e}")
-        return None
+            # Add frame to Redis stream
+            redis_client.xadd(
+                f"stream:{task_id}",
+                {"frame": frame_bytes.tobytes()},
+                maxlen=10  # Keep only recent frames
+            )
+            
     finally:
-        cap.release() 
+        redis_client.hdel("active_streams", task_id) 
