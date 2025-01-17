@@ -44,3 +44,5 @@ next-env.d.ts
 **/__pycache__/
 
 yolo_env
+source
+backend/dump.rdb
