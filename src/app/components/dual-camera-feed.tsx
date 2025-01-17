@@ -11,6 +11,8 @@ export default function DualCameraFeed() {
   const [rtspUrl, setRtspUrl] = useState("rtsp://admin:IRMAXS@192.168.31.131:554/ch1/main")
   const [imageUrl, setImageUrl] = useState("")
   const [activeStreams, setActiveStreams] = useState<string[]>([])
+  const [imageError, setImageError] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
 
   const fetchActiveStreams = async () => {
     try {
@@ -65,6 +67,23 @@ export default function DualCameraFeed() {
     }
   }
 
+  const handleImageError = () => {
+    console.error("Image failed to load")
+    if (retryCount < 1) {  // Only retry once
+      console.log("Retrying image load...")
+      setRetryCount(prev => prev + 1)
+      // Force re-render of Image component
+      setImageUrl(prev => prev + "?retry=" + new Date().getTime())
+    } else {
+      setImageError(true)
+    }
+  }
+
+  const handleImageLoad = () => {
+    setImageError(false)
+    setRetryCount(0)  // Reset retry count on successful load
+  }
+
   return (
     <div className="p-8">
       <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
@@ -117,16 +136,19 @@ export default function DualCameraFeed() {
           <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden">
             {imageUrl ? (
               <Image
+                key={imageUrl}
                 src={imageUrl}
                 alt="RTSP Stream"
                 className="w-full h-full object-cover"
                 width={1280}
                 height={720}
                 unoptimized
+                onError={handleImageError}
+                onLoad={handleImageLoad}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-500">
-                Stream is stopped
+                {imageError ? "Stream failed to load" : "Stream is stopped"}
               </div>
             )}
           </div>

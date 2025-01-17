@@ -16,9 +16,11 @@ class StreamManager:
         return {"task_id": task.id}
         
     def stop_stream(self, task_id: str):
-        # Revoke the celery task
-        self.celery.control.revoke(task_id, terminate=True)
+        # Revoke the celery task with signal to force termination
+        self.celery.control.revoke(task_id, terminate=True, signal='SIGTERM')
+        # Clean up Redis
         self.redis_client.hdel("active_streams", task_id)
+        self.redis_client.delete(f"stream:{task_id}")  # Also clean up the stream
         return True
 
     def get_frame(self, task_id: str):

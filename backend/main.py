@@ -33,7 +33,7 @@ def start_stream(request: StreamRequest):
     result = stream_manager.start_stream(request.rtsp_url)
     return result
 
-@router.post("/stream/stop/{task_id}")
+@router.post("/stop-stream/{task_id}")
 def stop_stream(task_id: str):
     """Stop a stream using its task_id"""
     if stream_manager.stop_stream(task_id):
