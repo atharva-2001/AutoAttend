@@ -4,3 +4,4 @@ uvicorn[standard]
 python-multipart 
 celery[redis]
 flower
+redis

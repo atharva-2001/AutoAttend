@@ -8,10 +8,76 @@ services:
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=https://autoattendance.lightmind.in
+      - NEXT_PUBLIC_WS_URL=wss://autoattendance.lightmind.in
     ports:
       - "3000:3000"
     volumes:
       - ./data:/app/data
+
+  redis:
+    image: redis:7.0.11-alpine
+    restart: always
+    expose:
+      - "6379"
+    volumes:
+      - redis-data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    environment:
+      - REDIS_MAXMEMORY=500mb
+      - REDIS_MAXMEMORY_POLICY=allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 300s
+      timeout: 10s
+      retries: 3
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    restart: always
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+      - HTTP_USER=${REDIS_COMMANDER_USER}
+      - HTTP_PASSWORD=${REDIS_COMMANDER_PASSWORD}
+    expose:
+      - "8081"
+    depends_on:
+      - redis
+
+  rabbitmq:
+    image: rabbitmq:3.9-management
+    restart: always
+    expose:
+      - "5672"
+      - "15672"
+    hostname: rabbitmq
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 300s
+      timeout: 10s
+      retries: 3
+
+  celery:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+      args:
+        - OS_NAME=${OS_NAME}
+    volumes:
+      - .:/app
+      - ./.env:/app/.env:ro
+      - ./backend:/app/backend:rw
+      - ./env:/app/env:ro
+    command: celery -A tasks.app worker --loglevel=info -c 10 -E
+    depends_on:
+      - redis
+      - rabbitmq
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OS_NAME=${OS_NAME}
+
 
   backend:
     build:
@@ -34,6 +100,10 @@ services:
       nofile:
         soft: 65535
         hard: 65535
+    depends_on:
+      - redis
+      - rabbitmq
+      - celery
 
   nginx:
     image: nginx:latest
@@ -46,3 +116,14 @@ services:
     depends_on:
       - app
       - backend
+      - redis
+      - rabbitmq 
+      - celery
+
+volumes:
+  data:
+    driver: local
+  redis-data:
+    driver: local
+  rabbitmq-data:
+    driver: local

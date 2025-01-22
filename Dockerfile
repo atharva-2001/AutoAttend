@@ -16,6 +16,7 @@ COPY . .
 
 # Set the API URL for production
 ENV NEXT_PUBLIC_API_URL=https://autoattendance.lightmind.in
+ENV NEXT_PUBLIC_WS_URL=wss://autoattendance.lightmind.in
 
 # Build the application
 RUN npm run build
