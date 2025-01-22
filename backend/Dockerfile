@@ -7,9 +7,9 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user with the same UID as your local user
-# Replace 1000 with your actual UID (you can find it by running 'id -u' in your terminal)
-RUN useradd -m -u 0 appuser && \
+# Create a non-root user with a non-zero UID
+# Using 1000 as it's typically the first regular user UID on Linux systems
+RUN useradd -m -u 1000 appuser && \
     mkdir -p /app && \
     chown -R appuser:appuser /app
 

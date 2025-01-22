@@ -7,8 +7,8 @@ services:
       dockerfile: Dockerfile
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=https://autoattendance.lightmind.in
-      - NEXT_PUBLIC_WS_URL=wss://autoattendance.lightmind.in
+      - NEXT_PUBLIC_API_URL=https://auto.lightmind.in
+      - NEXT_PUBLIC_WS_URL=wss://auto.lightmind.in
     ports:
       - "3000:3000"
     volumes:
@@ -61,8 +61,8 @@ services:
 
   celery:
     build:
-      context: .
-      dockerfile: ./backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
       args:
         - OS_NAME=${OS_NAME}
     volumes:
