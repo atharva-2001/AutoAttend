@@ -11,7 +11,6 @@ export default function DualCameraFeed() {
   const [rtspUrl, setRtspUrl] = useState("rtsp://admin:IRMAXS@192.168.31.131:554/ch1/main")
   const [imageUrl, setImageUrl] = useState("")
   const [activeStreams, setActiveStreams] = useState<string[]>([])
-  const [imageError, setImageError] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
   const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null)
   const [showWebcam, setShowWebcam] = useState(false)
@@ -80,13 +79,10 @@ export default function DualCameraFeed() {
       setRetryCount(prev => prev + 1)
       // Force re-render of Image component
       setImageUrl(prev => prev + "?retry=" + new Date().getTime())
-    } else {
-      setImageError(true)
     }
   }
 
   const handleImageLoad = () => {
-    setImageError(false)
     setRetryCount(0)  // Reset retry count on successful load
   }
 
