@@ -16,7 +16,7 @@ app.config_from_object(Config)
 redis_client = redis.from_url(Config.CELERY_RESULT_BACKEND)
 
 # Load YOLO model once when module loads
-model = YOLO("yolo11n.pt")
+model = YOLO("models/yolo11n.pt")
 
 @app.task(name='tasks.process_stream', bind=True)
 def process_stream(self, rtsp_url):
