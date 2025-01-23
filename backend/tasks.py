@@ -107,12 +107,33 @@ def process_webcam_stream(self):
                 logger.error("Failed to decode frame")
                 continue
             
-            # Run inference and plot results
-            results = model(frame, stream=False)
-            frame = results[0].plot()  # Plot detections just like RTSP stream
-            _, frame_bytes = cv2.imencode('.jpg', frame)
+            # Run face detection
+            results = face_model(frame, stream=False)
             
-            # Add frame to Redis stream
+            # Process each face detection
+            if len(results[0].boxes) > 0:
+                for box in results[0].boxes:
+                    # Get coordinates and confidence
+                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                    conf = box.conf[0].cpu().numpy()
+                    
+                    if conf > 0.5:  # Confidence threshold
+                        # Extract face crop
+                        face_crop = frame[int(y1):int(y2), int(x1):int(x2)]
+                        
+                        # Find match using InsightFace
+                        name, score = face_matcher.find_match(face_crop)
+                        
+                        # Draw results on frame
+                        cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 3)
+                        if name:
+                            label = f"{name} ({score:.2f})"
+                            cv2.putText(frame, label, (int(x1), int(y1)-20), 
+                                      cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 3)
+                            logger.info(f"Face matched: {name} with confidence {score:.2f}")
+            
+            # Convert processed frame to bytes and save to Redis stream
+            _, frame_bytes = cv2.imencode('.jpg', frame)
             redis_client.xadd(
                 f"webcam:{task_id}",
                 {"frame": frame_bytes.tobytes()},
