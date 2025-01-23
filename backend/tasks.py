@@ -7,6 +7,9 @@ import numpy as np
 import logging
 import time
 import json
+import onnxruntime as ort
+from pathlib import Path
+from face_matcher import FaceMatcher
 
 logger = logging.getLogger(__name__)
 
@@ -16,32 +19,71 @@ app.config_from_object(Config)
 redis_client = redis.from_url(Config.CELERY_RESULT_BACKEND)
 
 # Load YOLO model once when module loads
-model = YOLO("models/yolo11n.pt")
+# model = YOLO("models/yolo11n.pt")
+face_model = YOLO("models/yolov11l-face.pt")
+
+# Initialize FaceMatcher once at module level
+face_matcher = FaceMatcher(
+    model_path='models/insightface_R50_Glint360K.onnx',
+    threshold=0.2
+)
+
+# Load known faces once at startup
+known_faces_dir = Path("known_faces")
+for face_path in known_faces_dir.glob("*.jpg"):
+    name = face_path.stem
+    face_img = cv2.imread(str(face_path))
+    if face_img is not None:
+        face_matcher.add_face(name, face_img)
+    else:
+        logger.error(f"Failed to load face image: {face_path}")
 
 @app.task(name='tasks.process_stream', bind=True)
 def process_stream(self, rtsp_url):
-    """Process RTSP stream with YOLO and save frames to Redis"""
+    """Process RTSP stream with YOLO face detection and face matching"""
     task_id = self.request.id
-    redis_client.hset("active_streams", task_id, "1")
+    last_processed_time = 0
+    FRAME_INTERVAL = 0.5
     
     try:
-        # Run inference on the source directly using YOLO
-        results = model(rtsp_url, stream=True)  # generator of Results objects
+        redis_client.hset("active_streams", task_id, "1")
+        results = face_model(rtsp_url, stream=True)
         
         for result in results:
-            # Plot the result and convert to bytes
-            frame = result.plot()
-            _, frame_bytes = cv2.imencode('.jpg', frame)
+            frame = result.orig_img
             
-            # Add frame to Redis stream
+            # Process each face detection
+            if len(result.boxes) > 0:
+                for box in result.boxes:
+                    # Get coordinates and confidence
+                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                    conf = box.conf[0].cpu().numpy()
+                    
+                    if conf > 0.5:  # Confidence threshold
+                        # Extract face crop
+                        face_crop = frame[int(y1):int(y2), int(x1):int(x2)]
+                        
+                        # Find match using InsightFace
+                        name, score = face_matcher.find_match(face_crop)
+                        
+                        # Draw results on frame
+                        cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 3)
+                        if name:
+                            label = f"{name} ({score:.2f})"
+                            cv2.putText(frame, label, (int(x1), int(y1)-20), 
+                                      cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 3)
+                            logger.info(f"Face matched: {name} with confidence {score:.2f}")
+            
+            # Convert to bytes and save to Redis
+            _, frame_bytes = cv2.imencode('.jpg', frame)
             redis_client.xadd(
                 f"stream:{task_id}",
                 {"frame": frame_bytes.tobytes()},
-                maxlen=10  # Keep only recent frames
+                maxlen=10
             )
             
     finally:
-        redis_client.hdel("active_streams", task_id) 
+        redis_client.hdel("active_streams", task_id)
 
 @app.task(name='tasks.process_webcam_stream', bind=True)
 def process_webcam_stream(self):
