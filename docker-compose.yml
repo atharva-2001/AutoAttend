@@ -66,10 +66,8 @@ services:
       args:
         - OS_NAME=${OS_NAME}
     volumes:
-      - .:/app
+      - ./backend:/app
       - ./.env:/app/.env:ro
-      - ./backend:/app/backend:rw
-      - ./env:/app/env:ro
     command: celery -A tasks.app worker --loglevel=info -c 10 -E
     depends_on:
       - redis
@@ -87,6 +85,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - ./.env:/app/.env:ro
     cap_add:
       - NET_ADMIN
       - SYS_ADMIN
@@ -104,6 +103,22 @@ services:
       - redis
       - rabbitmq
       - celery
+
+  flower:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend:/app
+      - ./.env:/app/.env:ro
+    command: celery -A tasks.app flower
+    expose:
+      - "5555"
+    depends_on:
+      - redis
+      - rabbitmq
+      - celery
+      - backend
 
   nginx:
     image: nginx:latest

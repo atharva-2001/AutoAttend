@@ -5,7 +5,7 @@ import yaml
 from dotenv import load_dotenv
 import secrets
 
-load_dotenv('../.env')
+load_dotenv('.env')
 
 class Config:
     """Configuration class for the application."""
