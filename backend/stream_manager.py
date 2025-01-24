@@ -79,3 +79,8 @@ class StreamManager:
                 frame_bytes = stream_messages[0][1][b"frame"]
                 yield (b'--frame\r\n'
                       b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+
+    def get_logs(self, task_id: str):
+        """Get face detection logs for a task"""
+        logs = self.redis_client.xrevrange(f"logs:{task_id}", count=50)
+        return [log[1][b"message"].decode() for log in logs]

@@ -18,6 +18,7 @@ export default function DualCameraFeed() {
   const [webcamTaskId, setWebcamTaskId] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [detectionLogs, setDetectionLogs] = useState<string[]>([])
 
   const fetchActiveStreams = async () => {
     try {
@@ -237,6 +238,30 @@ export default function DualCameraFeed() {
     console.log("Webcam stopped");
   }
 
+  const fetchLogs = async (taskId: string) => {
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/logs/${taskId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setDetectionLogs(data.logs);
+      }
+    } catch (error) {
+      console.error("Error fetching logs:", error);
+    }
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (activeStreams.length > 0) {
+        activeStreams.forEach(taskId => fetchLogs(taskId));
+      }
+      if (webcamTaskId) {
+        fetchLogs(webcamTaskId);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [activeStreams, webcamTaskId]);
+
   return (
     <div className="p-8">
       <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
@@ -265,7 +290,7 @@ export default function DualCameraFeed() {
             </Button>
           </div>
 
-          <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden relative">
+          <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden relative mb-4">
             <video
                 ref={videoRef}
                 autoPlay
@@ -305,32 +330,43 @@ export default function DualCameraFeed() {
             )}
           </div>
 
-          <div className="mb-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Task ID</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activeStreams.map((taskId) => (
-                  <TableRow key={taskId}>
-                    <TableCell className="font-mono text-sm">{taskId}</TableCell>
-                    <TableCell>
-                      <Button
-                        onClick={() => stopStream(taskId)}
-                        variant="destructive"
-                        size="sm"
-                      >
-                        Stop
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+          <div className="mb-6">
+            <h3 className="text-sm font-medium mb-2">Face Detection Logs</h3>
+            <div className="bg-gray-100 rounded-lg p-4">
+              <div className="max-h-40 overflow-y-auto font-mono text-xs">
+                {[...detectionLogs].reverse().slice(0, 50).map((log, index) => (
+                  <div key={index} className="text-gray-700 mb-1">
+                    {log}
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            </div>
           </div>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Task ID</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {activeStreams.map((taskId) => (
+                <TableRow key={taskId}>
+                  <TableCell className="font-mono text-sm">{taskId}</TableCell>
+                  <TableCell>
+                    <Button
+                      onClick={() => stopStream(taskId)}
+                      variant="destructive"
+                      size="sm"
+                    >
+                      Stop
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       </div>
     </div>

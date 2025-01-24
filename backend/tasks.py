@@ -72,7 +72,15 @@ def process_stream(self, rtsp_url):
                             label = f"{name} ({score:.2f})"
                             cv2.putText(frame, label, (int(x1), int(y1)-20), 
                                       cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 3)
-                            logger.info(f"Face matched: {name} with confidence {score:.2f}")
+                            log_message = f"Face matched: {name} with confidence {score:.2f}"
+                            logger.info(log_message)
+                            
+                            # Store log in Redis
+                            redis_client.xadd(
+                                f"logs:{task_id}",
+                                {"message": log_message},
+                                maxlen=50  # Keep last 50 logs
+                            )
             
             # Convert to bytes and save to Redis
             _, frame_bytes = cv2.imencode('.jpg', frame)
@@ -130,7 +138,15 @@ def process_webcam_stream(self):
                             label = f"{name} ({score:.2f})"
                             cv2.putText(frame, label, (int(x1), int(y1)-20), 
                                       cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 3)
-                            logger.info(f"Face matched: {name} with confidence {score:.2f}")
+                            log_message = f"Face matched: {name} with confidence {score:.2f}"
+                            logger.info(log_message)
+                            
+                            # Store log in Redis
+                            redis_client.xadd(
+                                f"logs:{task_id}",
+                                {"message": log_message},
+                                maxlen=50  # Keep last 50 logs
+                            )
             
             # Convert processed frame to bytes and save to Redis stream
             _, frame_bytes = cv2.imencode('.jpg', frame)

@@ -127,4 +127,10 @@ def get_active_webcams():
     active_webcams = redis_client.hkeys("active_webcams")
     return {"webcams": [w.decode() for w in active_webcams]}
 
+@router.get("/logs/{task_id}")
+def get_logs(task_id: str):
+    """Get face detection logs for a task"""
+    logs = stream_manager.get_logs(task_id)
+    return {"logs": logs}
+
 app.include_router(router)
